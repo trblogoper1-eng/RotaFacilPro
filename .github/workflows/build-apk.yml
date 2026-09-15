@@ -1,4 +1,4 @@
-name: Build Rota Fácil Pro APK
+name:name: Build Rota Fácil Pro APK
 
 on:
   workflow_dispatch:
@@ -28,18 +28,46 @@ jobs:
           mkdir -p signing
           echo "$ROTA_KEYSTORE_BASE64" | base64 --decode > signing/rotafacilpro.jks
 
-          sed -i '/    buildTypes {/i\
-              signingConfigs {\
-                  stableRelease {\
-                      storeFile file("${rootDir}/signing/rotafacilpro.jks")\
-                      storePassword System.getenv("ROTA_KEYSTORE_PASSWORD")\
-                      keyAlias System.getenv("ROTA_KEY_ALIAS")\
-                      keyPassword System.getenv("ROTA_KEY_PASSWORD")\
-                  }\
-              }' app/build.gradle
+          cat > app/build.gradle <<'GRADLE'
+          plugins {
+              id 'com.android.application'
+          }
 
-          sed -i '/        release {/a\
-              signingConfig signingConfigs.stableRelease' app/build.gradle
+          android {
+              namespace 'com.rotafacilpro.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.rotafacilpro.app'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 8
+                  versionName '1.4.3'
+              }
+
+              signingConfigs {
+                  stableRelease {
+                      storeFile file("${rootDir}/signing/rotafacilpro.jks")
+                      storePassword System.getenv("ROTA_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ROTA_KEY_ALIAS")
+                      keyPassword System.getenv("ROTA_KEY_PASSWORD")
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.stableRelease
+                      minifyEnabled false
+                      shrinkResources false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.webkit:webkit:1.12.1'
+          }
+          GRADLE
 
       - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
