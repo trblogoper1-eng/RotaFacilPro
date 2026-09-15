@@ -14,46 +14,32 @@ jobs:
       - name: Preparar projeto
         run: |
           unzip -q RotaFacilPro_Android_v5_assinatura.zip
+          cd RotaFacilPro_Android_v5
+          chmod +x gradlew || true
 
       - name: Preparar assinatura permanente
         working-directory: RotaFacilPro_Android_v5
         env:
-          SIGNING_KEYSTORE_BASE64: ${{ secrets.ROTA_KEYSTORE_BASE64 }}
+          ROTA_KEYSTORE_BASE64: ${{ secrets.ROTA_KEYSTORE_BASE64 }}
+          ROTA_KEYSTORE_PASSWORD: ${{ secrets.ROTA_KEYSTORE_PASSWORD }}
+          ROTA_KEY_ALIAS: ${{ secrets.ROTA_KEY_ALIAS }}
+          ROTA_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
         run: |
           mkdir -p signing
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > signing/rotafacilpro.jks
+          echo "$ROTA_KEYSTORE_BASE64" | base64 --decode > signing/rotafacilpro.jks
 
-          python3 - <<'PY'
-          from pathlib import Path
+          sed -i '/    buildTypes {/i\
+              signingConfigs {\
+                  stableRelease {\
+                      storeFile file("${rootDir}/signing/rotafacilpro.jks")\
+                      storePassword System.getenv("ROTA_KEYSTORE_PASSWORD")\
+                      keyAlias System.getenv("ROTA_KEY_ALIAS")\
+                      keyPassword System.getenv("ROTA_KEY_PASSWORD")\
+                  }\
+              }' app/build.gradle
 
-          p = Path("app/build.gradle")
-          s = p.read_text()
-
-          if "stableRelease" not in s:
-              s = s.replace(
-                  "android {",
-                  """android {
-    signingConfigs {
-        stableRelease {
-            storeFile file("${rootDir}/signing/rotafacilpro.jks")
-            storePassword System.getenv("ROTA_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("ROTA_KEY_ALIAS")
-            keyPassword System.getenv("ROTA_KEY_PASSWORD")
-        }
-    }""",
-                  1
-              )
-
-          if "signingConfig signingConfigs.stableRelease" not in s:
-              s = s.replace(
-                  "release {",
-                  """release {
-            signingConfig signingConfigs.stableRelease""",
-                  1
-              )
-
-          p.write_text(s)
-          PY
+          sed -i '/        release {/a\
+              signingConfig signingConfigs.stableRelease' app/build.gradle
 
       - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -68,11 +54,6 @@ jobs:
           ROTA_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
         run: |
           gradle assembleRelease
-
-      - name: Limpar chave do runner
-        if: always()
-        run: |
-          rm -f RotaFacilPro_Android_v5/signing/rotafacilpro.jks
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
