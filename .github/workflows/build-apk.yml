@@ -13,7 +13,7 @@ jobs:
 
       - name: Preparar projeto
         run: |
-          unzip -q RotaFacilPro_Android_v1.zip
+          unzip -q RotaFacilPro_Android_v2.zip
           cd RotaFacilPro_Android
           chmod +x gradlew || true
 
