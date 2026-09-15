@@ -8,19 +8,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: 📥 Baixar projeto
         uses: actions/checkout@v4
 
       - name: 📦 Preparar V6 HARD
         run: |
-          unzip -q RotaFacilPro_V6_HARD_1.5.0.zip
-
-          echo "Arquivos do projeto:"
+          echo "Arquivos antes do ZIP:"
           ls -la
 
-          cd RotaFacilPro_V6_HARD_1.5.0
+          unzip -q RotaFacilPro_V6_HARD_1.5.0.zip
 
-          chmod +x gradlew || true
+          echo ""
+          echo "Arquivos depois do ZIP:"
+          find . -maxdepth 3 -type f | head -100
+
+          echo ""
+          echo "🔎 Procurando gradlew..."
+
+          PROJECT_DIR=$(dirname "$(find . -type f -name gradlew -print -quit)")
+
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+            echo "❌ gradlew não encontrado!"
+            exit 1
+          fi
+
+          echo "✅ Projeto encontrado em:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          chmod +x "$PROJECT_DIR/gradlew"
 
       - name: ⚙️ Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -28,13 +46,35 @@ jobs:
           gradle-version: '8.7'
 
       - name: 🔨 Compilar APK V6 DEBUG
-        working-directory: RotaFacilPro_V6_HARD_1.5.0
         run: |
+          echo "📂 Entrando em:"
+          echo "$PROJECT_DIR"
+
+          cd "$PROJECT_DIR"
+
+          echo "🚀 Compilando V6..."
+
           gradle assembleDebug --no-daemon
 
-      - name: 📱 Disponibilizar APK
+      - name: 📱 Localizar APK
+        run: |
+          echo "🔎 Procurando APK..."
+
+          APK=$(find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" -print -quit)
+
+          if [ -z "$APK" ]; then
+            echo "❌ APK não encontrado!"
+            exit 1
+          fi
+
+          echo "✅ APK encontrado:"
+          echo "$APK"
+
+          echo "APK_PATH=$APK" >> "$GITHUB_ENV"
+
+      - name: 📲 Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: RotaFacilPro-V6-HARD-1.5.0-DEBUG
-          path: RotaFacilPro_V6_HARD_1.5.0/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
