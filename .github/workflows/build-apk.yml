@@ -13,21 +13,69 @@ jobs:
 
       - name: Preparar projeto
         run: |
-          unzip -q RotaFacilPro_Android_v4_5.zip
-          cd RotaFacilPro_Android_v4_5
+          unzip -q RotaFacilPro_Android_v5_assinatura.zip
+          cd RotaFacilPro_Android_v5
           chmod +x gradlew || true
+
+      - name: Preparar assinatura permanente
+        working-directory: RotaFacilPro_Android_v5
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.ROTA_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.ROTA_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ROTA_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
+        run: |
+          mkdir -p signing
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > signing/rotafacilpro.jks
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle")
+          s = p.read_text()
+
+          s = s.replace(
+              "android {",
+              """android {
+              signingConfigs {
+                  stableRelease {
+                      storeFile file("${rootDir}/signing/rotafacilpro.jks")
+                      storePassword System.getenv("SIGNING_STORE_PASSWORD")
+                      keyAlias System.getenv("SIGNING_KEY_ALIAS")
+                      keyPassword System.getenv("SIGNING_KEY_PASSWORD")
+                  }
+              }""",
+              1
+          )
+
+          s = s.replace(
+              "buildTypes {\n        release {",
+              "buildTypes {\n        release {\n            signingConfig signingConfigs.stableRelease",
+              1
+          )
+
+          p.write_text(s)
+          PY
 
       - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Compilar APK
-        working-directory: RotaFacilPro_Android_v4_5
-        run: gradle assembleDebug
+      - name: Compilar APK assinado
+        working-directory: RotaFacilPro_Android_v5
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.ROTA_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ROTA_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
+        run: gradle assembleRelease
+
+      - name: Limpar chave do runner
+        if: always()
+        run: rm -f RotaFacilPro_Android_v5/signing/rotafacilpro.jks
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: RotaFacilPro-APK
-          path: RotaFacilPro_Android_v4_5/app/build/outputs/apk/debug/app-debug.apk
+          name: RotaFacilPro-APK-Assinado
+          path: RotaFacilPro_Android_v5/app/build/outputs/apk/release/app-release.apk
