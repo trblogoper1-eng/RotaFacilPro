@@ -1,4 +1,4 @@
-name:name: Build Rota Fácil Pro APK
+name: Build Rota Fácil Pro APK
 
 on:
   workflow_dispatch:
