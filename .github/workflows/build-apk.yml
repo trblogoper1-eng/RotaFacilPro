@@ -14,31 +14,28 @@ jobs:
 
       - name: 📦 Preparar V6 HARD
         run: |
-          echo "Arquivos antes do ZIP:"
-          ls -la
+          echo "📦 Extraindo projeto..."
 
           unzip -q RotaFacilPro_V6_HARD_1.5.0.zip
 
           echo ""
-          echo "Arquivos depois do ZIP:"
-          find . -maxdepth 3 -type f | head -100
+          echo "🔎 Procurando projeto Android..."
 
-          echo ""
-          echo "🔎 Procurando gradlew..."
-
-          PROJECT_DIR=$(dirname "$(find . -type f -name gradlew -print -quit)")
+          PROJECT_DIR=$(dirname "$(find . -type f -name settings.gradle -print -quit)")
 
           if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-            echo "❌ gradlew não encontrado!"
+            echo "❌ settings.gradle não encontrado!"
             exit 1
           fi
 
-          echo "✅ Projeto encontrado em:"
+          echo "✅ Projeto encontrado:"
           echo "$PROJECT_DIR"
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          chmod +x "$PROJECT_DIR/gradlew"
+          echo ""
+          echo "📂 Estrutura do projeto:"
+          find "$PROJECT_DIR" -maxdepth 3 -type f | sort
 
       - name: ⚙️ Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -47,20 +44,20 @@ jobs:
 
       - name: 🔨 Compilar APK V6 DEBUG
         run: |
-          echo "📂 Entrando em:"
-          echo "$PROJECT_DIR"
+          echo "🚀 Compilando Rota Fácil Pro V6 HARD..."
 
           cd "$PROJECT_DIR"
 
-          echo "🚀 Compilando V6..."
-
           gradle assembleDebug --no-daemon
 
-      - name: 📱 Localizar APK
+      - name: 🔎 Localizar APK
         run: |
           echo "🔎 Procurando APK..."
 
-          APK=$(find "$PROJECT_DIR" -type f -path "*/build/outputs/apk/debug/*.apk" -print -quit)
+          APK=$(find "$PROJECT_DIR" \
+            -type f \
+            -path "*/build/outputs/apk/debug/*.apk" \
+            -print -quit)
 
           if [ -z "$APK" ]; then
             echo "❌ APK não encontrado!"
@@ -72,7 +69,7 @@ jobs:
 
           echo "APK_PATH=$APK" >> "$GITHUB_ENV"
 
-      - name: 📲 Disponibilizar APK
+      - name: 📱 Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: RotaFacilPro-V6-HARD-1.5.0-DEBUG
