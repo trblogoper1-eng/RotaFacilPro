@@ -1,4 +1,4 @@
-name: Build Rota Fácil Pro APK
+name: Build Rota Fácil Pro V6 HARD
 
 on:
   workflow_dispatch:
@@ -8,83 +8,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar projeto
+      - name: 📥 Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Preparar projeto
+      - name: 📦 Preparar V6 HARD
         run: |
-          unzip -q RotaFacilPro_Android_v5_assinatura.zip
-          cd RotaFacilPro_Android_v5
+          unzip -q RotaFacilPro_V6_HARD_1.5.0.zip
+
+          echo "Arquivos do projeto:"
+          ls -la
+
+          cd RotaFacilPro_V6_HARD_1.5.0
+
           chmod +x gradlew || true
 
-      - name: Preparar assinatura permanente
-        working-directory: RotaFacilPro_Android_v5
-        env:
-          ROTA_KEYSTORE_BASE64: ${{ secrets.ROTA_KEYSTORE_BASE64 }}
-          ROTA_KEYSTORE_PASSWORD: ${{ secrets.ROTA_KEYSTORE_PASSWORD }}
-          ROTA_KEY_ALIAS: ${{ secrets.ROTA_KEY_ALIAS }}
-          ROTA_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
-        run: |
-          mkdir -p signing
-          echo "$ROTA_KEYSTORE_BASE64" | base64 --decode > signing/rotafacilpro.jks
-
-          cat > app/build.gradle <<'GRADLE'
-          plugins {
-              id 'com.android.application'
-          }
-
-          android {
-              namespace 'com.rotafacilpro.app'
-              compileSdk 35
-
-              defaultConfig {
-                  applicationId 'com.rotafacilpro.app'
-                  minSdk 23
-                  targetSdk 35
-                  versionCode 8
-                  versionName '1.4.3'
-              }
-
-              signingConfigs {
-                  stableRelease {
-                      storeFile file("${rootDir}/signing/rotafacilpro.jks")
-                      storePassword System.getenv("ROTA_KEYSTORE_PASSWORD")
-                      keyAlias System.getenv("ROTA_KEY_ALIAS")
-                      keyPassword System.getenv("ROTA_KEY_PASSWORD")
-                  }
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.stableRelease
-                      minifyEnabled false
-                      shrinkResources false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
-              }
-          }
-
-          dependencies {
-              implementation 'androidx.webkit:webkit:1.12.1'
-          }
-          GRADLE
-
-      - name: Instalar Gradle
+      - name: ⚙️ Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Compilar APK assinado
-        working-directory: RotaFacilPro_Android_v5
-        env:
-          ROTA_KEYSTORE_PASSWORD: ${{ secrets.ROTA_KEYSTORE_PASSWORD }}
-          ROTA_KEY_ALIAS: ${{ secrets.ROTA_KEY_ALIAS }}
-          ROTA_KEY_PASSWORD: ${{ secrets.ROTA_KEY_PASSWORD }}
+      - name: 🔨 Compilar APK V6 DEBUG
+        working-directory: RotaFacilPro_V6_HARD_1.5.0
         run: |
-          gradle assembleRelease
+          gradle assembleDebug --no-daemon
 
-      - name: Disponibilizar APK
+      - name: 📱 Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: RotaFacilPro-APK-Assinado
-          path: RotaFacilPro_Android_v5/app/build/outputs/apk/release/app-release.apk
+          name: RotaFacilPro-V6-HARD-1.5.0-DEBUG
+          path: RotaFacilPro_V6_HARD_1.5.0/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
